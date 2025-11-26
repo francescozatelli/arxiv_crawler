@@ -1,5 +1,7 @@
 all:majorana+AND+cat:cond-mat.mes-hall
 all:majorana+AND+cat:cond-mat.supr-con
+all:kitaev+AND+cat:cond-mat.mes-hall
+all:kitaev+AND+cat:cond-mat.supr-con
 ti:insb+AND+cat:cond-mat.mes-hall
 ti:inas+AND+cat:cond-mat.mes-hall
 ti:nanowire+AND+cat:cond-mat.mes-hall
@@ -63,3 +65,9 @@ au:vaitiekenas+AND+cat:cond-mat.mes-hall
 au:vaitiekenas+AND+cat:cond-mat.supr-con
 au:seoane+AND+au:souto+AND+cat:cond-mat.mes-hall
 au:katsaros+AND+cat:cond-mat.mes-hall
+au:veldhorst+AND+cat:cond-mat.mes-hall
+au:veldhorst+AND+cat:quant-ph
+au:mazur+AND+cat:cond-mat.mes-hall
+au:mazur+AND+cat:cond-mat.supr-con
+au:john+AND+au:martini+AND+cat:cond-mat.mes-hall
+au:john+AND+au:martini+AND+cat:quant-ph
