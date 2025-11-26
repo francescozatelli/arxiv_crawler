@@ -1,9 +1,9 @@
 all:majorana+AND+cat:cond-mat.mes-hall
 all:majorana+AND+cat:cond-mat.supr-con
 
-all:"proximitized quantum dot"+AND+cat:cond-mat.supr-con
-all:"andreev bound state"+AND+cat:cond-mat.supr-con
-all:"quantum dot"+AND+"superconduct*"+AND+cat:cond-mat.supr-con
+all:proximitized+AND+quantum+AND+dot+AND+cat:cond-mat.supr-con
+all:andreev+AND+bound+AND+state+AND+cat:cond-mat.supr-con
+all:quantum+AND+dot+AND+superconduct*+AND+cat:cond-mat.supr-con
 
 all:kitaev+AND+cat:cond-mat.mes-hall
 all:kitaev+AND+cat:cond-mat.supr-con
