@@ -9,7 +9,7 @@ import pandas as pd
 def update_database(df1, df2):
     df3 = pd.concat([df1, df2], sort=True)
     df3.drop_duplicates(subset=['id'], inplace=True, keep='last')  # could be done more efficiently?
-    cols = ['title', 'author_list', 'published', 'arxiv_primary_category', 'id', 'link']
+    cols = ['title', 'author_list', 'published', 'arxiv_primary_category', 'id', 'link', 'search_query']
     df3 = df3[cols]  # reorder columns
     return df3.sort_values(by=['published'], ascending=False)
 
