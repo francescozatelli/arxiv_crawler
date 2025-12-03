@@ -62,9 +62,9 @@ def query_arxiv_org(query_input):
                     search_query
                     .replace("+", " ")
                     .replace("AND", " ")
-                    .replace("all:", " ")
+                    .replace("all:", " Content : ")
                     .replace("au:", "Author : ")
-                    .replace("/n", "")
+                    .replace("\n", "")
                     .replace("cat:", " ")
                     .replace("cond-mat.supr-con", "")
                     .replace("cond-mat.mes-hall" , "")
