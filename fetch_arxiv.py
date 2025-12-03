@@ -73,7 +73,7 @@ def query_arxiv_org(query_input):
                 )
 
             
-            dic_stored['search_query'] = str(search_query)
+            dic_stored['search_query'] = str(query)
             dic_stored['link'] = entry.link
             result_list.append(dic_stored)
 
