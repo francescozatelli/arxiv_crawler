@@ -56,6 +56,23 @@ def query_arxiv_org(query_input):
             dic_stored['title'] = _remove_newlines(entry.title)
             dic_stored['arxiv_primary_category'] = entry.arxiv_primary_category['term']
             dic_stored['published'] = _convert_time(entry.published)
+
+            # replace the query with legible terms
+            query = (
+                    search_query
+                    .replace("+", " ")
+                    .replace("AND", " ")
+                    .replace("all:", " ")
+                    .replace("au:", "Author : ")
+                    .replace("/n", "")
+                    .replace("cat:", " ")
+                    .replace("cond-mat.supr-con", "")
+                    .replace("cond-mat.mes-hall" , "")
+                    .replace("ti:", "Title : ")
+                    
+                )
+
+            
             dic_stored['search_query'] = str(search_query)
             dic_stored['link'] = entry.link
             result_list.append(dic_stored)
