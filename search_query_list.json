@@ -1,0 +1,565 @@
+{
+    "custom_queries":  [
+                           "all:majorana+AND+cat:cond-mat.mes-hall",
+                           "all:majorana+AND+cat:cond-mat.supr-con",
+                           "all:proximitized+AND+quantum+AND+dot+AND+cat:cond-mat.supr-con",
+                           "all:andreev+AND+bound+AND+state+AND+cat:cond-mat.supr-con",
+                           "all:quantum+AND+dot+AND+superconduct*+AND+cat:cond-mat.supr-con",
+                           "ti:insb+AND+cat:cond-mat.mes-hall",
+                           "ti:inas+AND+cat:cond-mat.mes-hall",
+                           "ti:nanowire+AND+cat:cond-mat.mes-hall",
+                           "au:chetan+AND+au:nayak+AND+cat:cond-mat.mes-hall",
+                           "au:srijit+AND+au:goswami+AND+cat:cond-mat.mes-hall",
+                           "au:thomas+AND+au:ihn+AND+cat:cond-mat.mes-hall",
+                           "au:y+AND+au:oreg+AND+cat:cond-mat.mes-hall",
+                           "au:seoane+AND+au:souto+AND+cat:cond-mat.mes-hall"
+                       ],
+    "authors":  [
+                    {
+                        "last_name":  "aguado",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Ramon",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "akhmerov",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Anton",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "alicea",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Jason",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "andersen",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Christian",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "ando",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Yuji",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "bakkers",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Erik",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "balents",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Leon",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "beenakker",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Carlo",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "bosco",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Stefano",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "bretheau",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Landry",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "chatterjee",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Arka",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "citro",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Rosario",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "csonka",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Szabolcs",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "devoret",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Michel",
+                        "middle_name":  "H"
+                    },
+                    {
+                        "last_name":  "dicarlo",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Lieven",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "ensslin",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Klaus",
+                        "middle_name":  "D"
+                    },
+                    {
+                        "last_name":  "fatemi",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Vahid",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "flensberg",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Karsten",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "frolov",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Sergey",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "giazotto",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Francesco",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "glazman",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Leonid",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "groeblacher",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Simon",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "heiblum",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Moty",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "houzet",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Manuel",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "huettel",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Alexander",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "jarillo-herrero",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Pablo",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "kashuba",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Oleksiy",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "katsaros",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Georgios",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "klinovaja",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Jelena",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "kouwenhoven",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Leo",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "krogstrup",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Peter",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "lodari",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Marco",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "loss",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Daniel",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "lukin",
+                        "categories":  [
+                                           "cond-mat.quant-gas",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Mikhail",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "lutchyn",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Roman",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "maiellaro",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Arianna",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "manfra",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Michael",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "marcus",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Charles",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "molenkamp",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Laurens",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "nazarov",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Yuli",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "nichele",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Francesco",
+                        "middle_name":  "F"
+                    },
+                    {
+                        "last_name":  "nygard",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Jesper",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "oreg",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Yuval",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "palmstrom",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Chris",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "pekola",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Jukka",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "pillet",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Jean-Damien",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "potter",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Andrew",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "pribiag",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Vladimir",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "reuther",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Johannes",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "sarma",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Sankar",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "scappucci",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Giordano",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "sebastiano",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Fabio",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "setiawan",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Fadli",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "shabani",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Javad",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "shonenberger",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Christian",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "stanescu",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Tudor",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "tarucha",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Seigo",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "tosi",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Lucia",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "vaitiekenas",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Saulius",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "vandersypen",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Lieven",
+                        "middle_name":  "M K"
+                    },
+                    {
+                        "last_name":  "veldhorst",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Menno",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "wallraff",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Andreas",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "wiesendanger",
+                        "categories":  [
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Roland",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "wimmer",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Michael",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "yacoby",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Amir",
+                        "middle_name":  ""
+                    },
+                    {
+                        "last_name":  "yazdani",
+                        "categories":  [
+                                           "cond-mat.mes-hall"
+                                       ],
+                        "first_name":  "Ali",
+                        "middle_name":  ""
+                    }
+                ]
+}
