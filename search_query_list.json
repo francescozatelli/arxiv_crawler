@@ -821,6 +821,103 @@
                         "first_name":  "Tom",
                         "middle_name":  "",
                         "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Gonzalez-Zalba",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "M",
+                        "middle_name":  "Fernando",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Morton",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "John",
+                        "middle_name":  "J L",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Sau",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Jay",
+                        "middle_name":  "D",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Terhal",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Barbara",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Otte",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Sander",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Gidney",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Craig",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Steele",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Gary",
+                        "middle_name":  "A",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Shen",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Jie",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Xu",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Hongqi",
+                        "middle_name":  "Q",
+                        "require_given_name":  true
                     }
                 ]
 }
