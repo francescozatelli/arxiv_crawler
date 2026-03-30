@@ -12,7 +12,7 @@ import time
 import unicodedata
 from datetime import datetime
 from urllib.parse import quote, unquote_plus
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 import feedparser
 import pandas as pd
@@ -262,6 +262,28 @@ def _is_rate_limited_error(exc):
     return 'HTTPError 429' in text or '429' in text
 
 
+def _is_transient_parse_error(exc):
+    """Return True for transient malformed XML/stream errors."""
+    if exc is None:
+        return False
+    text = repr(exc)
+    return 'SAXParseException' in text or 'not well-formed' in text or 'syntax error' in text
+
+
+def _download_bytes(url, timeout=30, insecure_ssl=False):
+    """Download raw response bytes with a stable User-Agent."""
+    request = Request(url, headers={'User-Agent': 'arxiv-crawler/1.0 (+github-actions)'})
+    if insecure_ssl:
+        insecure_ctx = ssl.create_default_context()
+        insecure_ctx.check_hostname = False
+        insecure_ctx.verify_mode = ssl.CERT_NONE
+        with urlopen(request, context=insecure_ctx, timeout=timeout) as response:
+            return response.read()
+
+    with urlopen(request, timeout=timeout) as response:
+        return response.read()
+
+
 def _parse_arxiv_feed(url, max_attempts=3, base_sleep_seconds=1.0):
     """Parse one arXiv API URL with retry and targeted SSL fallback.
 
@@ -276,18 +298,20 @@ def _parse_arxiv_feed(url, max_attempts=3, base_sleep_seconds=1.0):
     for attempt in range(1, max_attempts + 1):
         parsed = feedparser.parse(url)
         bozo_exception = getattr(parsed, 'bozo_exception', None)
+        entry_count = len(getattr(parsed, 'entries', []))
 
         if not getattr(parsed, 'bozo', False):
+            return parsed
+
+        # Some bozo parser states still contain valid entries; accept those.
+        if entry_count > 0:
+            print(f'Warning: bozo parse with {entry_count} entries, continuing: {bozo_exception!r}')
             return parsed
 
         # Handle local trust-store issues with a targeted fallback.
         if _is_ssl_cert_error(bozo_exception):
             try:
-                insecure_ctx = ssl.create_default_context()
-                insecure_ctx.check_hostname = False
-                insecure_ctx.verify_mode = ssl.CERT_NONE
-                with urlopen(url, context=insecure_ctx, timeout=30) as response:
-                    parsed_insecure = feedparser.parse(response.read())
+                parsed_insecure = feedparser.parse(_download_bytes(url, insecure_ssl=True))
                 if not getattr(parsed_insecure, 'bozo', False):
                     print('Warning: SSL verification failed, used insecure fallback for arXiv API.')
                     return parsed_insecure
@@ -297,6 +321,22 @@ def _parse_arxiv_feed(url, max_attempts=3, base_sleep_seconds=1.0):
         elif _is_rate_limited_error(bozo_exception):
             # arXiv API throttling: wait longer before retrying.
             last_error = bozo_exception
+            if attempt < max_attempts:
+                time.sleep(max(10.0, base_sleep_seconds * (2 ** attempt)))
+                continue
+        elif _is_transient_parse_error(bozo_exception):
+            # Retry once with explicit byte download and then back off.
+            try:
+                parsed_retry = feedparser.parse(_download_bytes(url))
+                if not getattr(parsed_retry, 'bozo', False):
+                    return parsed_retry
+                if len(getattr(parsed_retry, 'entries', [])) > 0:
+                    print('Warning: transient parse error, recovered entries on byte retry.')
+                    return parsed_retry
+                last_error = getattr(parsed_retry, 'bozo_exception', bozo_exception)
+            except Exception as exc:
+                last_error = exc
+
             if attempt < max_attempts:
                 time.sleep(max(10.0, base_sleep_seconds * (2 ** attempt)))
                 continue
@@ -325,6 +365,7 @@ def query_arxiv_org(query_input):
     sorting_order = '&sortBy=submittedDate&sortOrder=descending'
 
     result_list = []
+    failed_queries = []
 
     # search for the keywords/authors one by one
     for query_idx, search_query in enumerate(search_keywords, start=1):
@@ -334,7 +375,12 @@ def query_arxiv_org(query_input):
         author_terms = _extract_author_terms(search_query)
         query = f'search_query={search_query}&start={start}&max_results={max_results}'
 
-        d = _parse_arxiv_feed(base_url+query+sorting_order, max_attempts=5, base_sleep_seconds=3.0)
+        try:
+            d = _parse_arxiv_feed(base_url+query+sorting_order, max_attempts=5, base_sleep_seconds=3.0)
+        except RuntimeError as exc:
+            failed_queries.append((search_query, repr(exc)))
+            print(f'Warning: skipping query after retries: {search_query} | {exc}')
+            continue
 
         for entry in d.entries:
             if not _entry_matches_author_terms(entry.authors, author_terms):
@@ -367,6 +413,12 @@ def query_arxiv_org(query_input):
             dic_stored['search_query'] = str(query)
             dic_stored['link'] = entry.link
             result_list.append(dic_stored)
+
+    if failed_queries:
+        print(f'Warning: {len(failed_queries)} queries failed and were skipped.')
+        # If every query failed, fail loudly because output is unusable.
+        if len(failed_queries) == len(search_keywords):
+            raise RuntimeError('All arXiv queries failed; aborting crawl.')
 
     return result_list
 
