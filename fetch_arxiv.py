@@ -6,10 +6,13 @@ add -d for debugging (log beginning of each stage)
 import json
 import os
 import re
+import ssl
 import sys
+import time
 import unicodedata
 from datetime import datetime
 from urllib.parse import quote, unquote_plus
+from urllib.request import urlopen
 
 import feedparser
 import pandas as pd
@@ -73,16 +76,21 @@ def _author_term_matches_name(author_term, author_name):
             return False
         return token == surname
 
-    # Multi-token query: last token must be surname.
-    if term_tokens[-1] != surname:
+    # Multi-token query: support both "Given Surname" and "Surname Given".
+    if term_tokens[-1] == surname:
+        given_query_tokens = term_tokens[:-1]
+    elif term_tokens[0] == surname:
+        given_query_tokens = term_tokens[1:]
+    else:
         return False
 
-    for token in term_tokens[:-1]:
+    for token in given_query_tokens:
         if len(token) == 1:
             if token not in given_initials:
                 return False
         else:
-            if token not in given_tokens:
+            # Accept full-token equality and full-name vs initial equivalence.
+            if token not in given_tokens and token[0] not in given_initials:
                 return False
 
     return True
@@ -234,6 +242,69 @@ def _load_search_queries(query_input):
 
     return unique_queries
 
+
+def _is_ssl_cert_error(exc):
+    """Return True when the parser exception is an SSL cert verification failure."""
+    if exc is None:
+        return False
+    return 'CERTIFICATE_VERIFY_FAILED' in repr(exc)
+
+
+def _is_rate_limited_error(exc):
+    """Return True when the parser exception indicates HTTP 429 rate limiting."""
+    if exc is None:
+        return False
+    text = repr(exc)
+    return 'HTTPError 429' in text or '429' in text
+
+
+def _parse_arxiv_feed(url, max_attempts=3, base_sleep_seconds=1.0):
+    """Parse one arXiv API URL with retry and targeted SSL fallback.
+
+    Returns:
+        feedparser.FeedParserDict
+
+    Raises:
+        RuntimeError: if parsing fails after retries/fallback.
+    """
+    last_error = None
+
+    for attempt in range(1, max_attempts + 1):
+        parsed = feedparser.parse(url)
+        bozo_exception = getattr(parsed, 'bozo_exception', None)
+
+        if not getattr(parsed, 'bozo', False):
+            return parsed
+
+        # Handle local trust-store issues with a targeted fallback.
+        if _is_ssl_cert_error(bozo_exception):
+            try:
+                insecure_ctx = ssl.create_default_context()
+                insecure_ctx.check_hostname = False
+                insecure_ctx.verify_mode = ssl.CERT_NONE
+                with urlopen(url, context=insecure_ctx, timeout=30) as response:
+                    parsed_insecure = feedparser.parse(response.read())
+                if not getattr(parsed_insecure, 'bozo', False):
+                    print('Warning: SSL verification failed, used insecure fallback for arXiv API.')
+                    return parsed_insecure
+                last_error = getattr(parsed_insecure, 'bozo_exception', bozo_exception)
+            except Exception as exc:
+                last_error = exc
+        elif _is_rate_limited_error(bozo_exception):
+            # arXiv API throttling: wait longer before retrying.
+            last_error = bozo_exception
+            if attempt < max_attempts:
+                time.sleep(max(10.0, base_sleep_seconds * (2 ** attempt)))
+                continue
+        else:
+            last_error = bozo_exception
+
+        if attempt < max_attempts:
+            sleep_seconds = base_sleep_seconds * attempt
+            time.sleep(sleep_seconds)
+
+    raise RuntimeError(f'arXiv API parse failed after {max_attempts} attempts: {last_error!r}')
+
 def query_arxiv_org(query_input):
     """Search for query items on arXiv and return the list of results"""
 
@@ -242,6 +313,8 @@ def query_arxiv_org(query_input):
     base_url = 'https://export.arxiv.org/api/query?'
     # each search item (legacy txt or structured json)
     search_keywords = _load_search_queries(query_input)
+    # arXiv recommends keeping requests slow to avoid throttling.
+    request_delay_seconds = 3.0
     # some options
     start = 0
     max_results = 50 # see arXiv API for max result limits
@@ -250,11 +323,14 @@ def query_arxiv_org(query_input):
     result_list = []
 
     # search for the keywords/authors one by one
-    for search_query in search_keywords:
+    for query_idx, search_query in enumerate(search_keywords, start=1):
+        if query_idx > 1:
+            time.sleep(request_delay_seconds)
+
         author_terms = _extract_author_terms(search_query)
         query = f'search_query={search_query}&start={start}&max_results={max_results}'
 
-        d = feedparser.parse(base_url+query+sorting_order) # actual querying
+        d = _parse_arxiv_feed(base_url+query+sorting_order, max_attempts=5, base_sleep_seconds=3.0)
 
         for entry in d.entries:
             if not _entry_matches_author_terms(entry.authors, author_terms):
