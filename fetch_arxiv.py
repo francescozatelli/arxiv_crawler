@@ -128,6 +128,7 @@ def _build_author_name_variants(author):
     last_name = str(author.get('last_name', '')).strip()
     first_name = str(author.get('first_name', '')).strip()
     middle_names = _split_middle_names(author.get('middle_name', author.get('middle_names')))
+    require_given_name = bool(author.get('require_given_name', False))
 
     if not last_name:
         return []
@@ -139,8 +140,10 @@ def _build_author_name_variants(author):
         if clean and clean not in variants:
             variants.append(clean)
 
-    # Last name only.
-    _add_variant(last_name)
+    # Default behavior includes surname-only query, but this can be disabled for
+    # common surnames where false positives are likely.
+    if not require_given_name:
+        _add_variant(last_name)
 
     if first_name:
         first_initial = first_name[0]
@@ -190,6 +193,7 @@ def _load_search_queries(query_input):
           "last_name": "Vandersypen",
           "first_name": "Lieven",
           "middle_name": "M K",   # optional, string or list
+                    "require_given_name": false,  # optional; when true skip surname-only
           "categories": ["cond-mat.mes-hall", "cond-mat.supr-con"]
         }
       ]
