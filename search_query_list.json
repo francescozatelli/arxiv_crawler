@@ -898,6 +898,26 @@
                         "first_name":  "Gary",
                         "middle_name":  "A",
                         "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Shen",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Jie",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Xu",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Hongqi",
+                        "middle_name":  "Q",
+                        "require_given_name":  true
                     }
                 ]
 }
