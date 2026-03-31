@@ -342,6 +342,13 @@ def _parse_arxiv_feed(url, max_attempts=3, base_sleep_seconds=1.0):
 
     raise RuntimeError(f'arXiv API parse failed after {max_attempts} attempts: {last_error!r}')
 
+
+def _truncate_for_log(text, max_len=140):
+    """Truncate long query strings to keep CI logs readable."""
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 3] + '...'
+
 def query_arxiv_org(query_input):
     """Search for query items on arXiv and return the list of results"""
 
@@ -359,6 +366,7 @@ def query_arxiv_org(query_input):
 
     result_list = []
     failed_queries = []
+    query_audit = []
 
     # search for the keywords/authors one by one
     for query_idx, search_query in enumerate(search_keywords, start=1):
@@ -372,8 +380,17 @@ def query_arxiv_org(query_input):
             d = _parse_arxiv_feed(base_url+query+sorting_order, max_attempts=5, base_sleep_seconds=3.0)
         except RuntimeError as exc:
             failed_queries.append((search_query, repr(exc)))
+            query_audit.append({
+                'status': 'failed',
+                'query': search_query,
+                'error': repr(exc),
+            })
             print(f'Warning: skipping query after retries: {search_query} | {exc}')
             continue
+
+        raw_entry_count = len(d.entries)
+        matched_entry_count = 0
+        sample_ids = []
 
         for entry in d.entries:
             if not _entry_matches_author_terms(entry.authors, author_terms):
@@ -381,6 +398,9 @@ def query_arxiv_org(query_input):
 
             dic_stored = {}
             dic_stored['id'] = entry.id.split('/')[-1].split('v')[0]
+            matched_entry_count += 1
+            if len(sample_ids) < 3:
+                sample_ids.append(dic_stored['id'])
             dic_stored['author_list'] = _join_authors(entry.authors)
             dic_stored['title'] = _remove_newlines(entry.title)
             dic_stored['arxiv_primary_category'] = entry.arxiv_primary_category['term']
@@ -406,6 +426,33 @@ def query_arxiv_org(query_input):
             dic_stored['search_query'] = str(query)
             dic_stored['link'] = entry.link
             result_list.append(dic_stored)
+
+        query_audit.append({
+            'status': 'ok',
+            'query': search_query,
+            'raw_entry_count': raw_entry_count,
+            'matched_entry_count': matched_entry_count,
+            'sample_ids': sample_ids,
+        })
+
+    # Per-query diagnostics: helps detect silent misses in successful runs.
+    for item in query_audit:
+        if item['status'] == 'failed':
+            print(
+                'Query audit | status=failed'
+                f' | query={_truncate_for_log(item["query"])}'
+                f' | error={item["error"]}'
+            )
+            continue
+
+        sample_ids_text = ','.join(item['sample_ids']) if item['sample_ids'] else '-'
+        print(
+            'Query audit | status=ok'
+            f' | raw_entries={item["raw_entry_count"]}'
+            f' | matched_entries={item["matched_entry_count"]}'
+            f' | sample_ids={sample_ids_text}'
+            f' | query={_truncate_for_log(item["query"])}'
+        )
 
     if failed_queries:
         print(f'Warning: {len(failed_queries)} queries failed and were skipped.')
