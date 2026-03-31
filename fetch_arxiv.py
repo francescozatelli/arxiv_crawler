@@ -124,10 +124,15 @@ def _split_middle_names(middle_names):
 
 
 def _build_author_name_variants(author):
-    """Build name variants such as 'Vandersypen', 'L Vandersypen', etc."""
+    """Build balanced name variants for arXiv author queries.
+
+    Default variants are:
+    - FirstName LastName
+    - F LastName
+    Optionally include LastName-only when require_given_name is false.
+    """
     last_name = str(author.get('last_name', '')).strip()
     first_name = str(author.get('first_name', '')).strip()
-    middle_names = _split_middle_names(author.get('middle_name', author.get('middle_names')))
     require_given_name = bool(author.get('require_given_name', False))
 
     if not last_name:
@@ -151,18 +156,6 @@ def _build_author_name_variants(author):
         # Full first + last, and first initial + last.
         _add_variant(f"{first_name} {last_name}")
         _add_variant(f"{first_initial} {last_name}")
-
-        if middle_names:
-            # Full names.
-            _add_variant(f"{first_name} {' '.join(middle_names)} {last_name}")
-
-            middle_initials = [name[0] for name in middle_names if name]
-            # Progressive initial variants: L M Last, L M K Last, ...
-            for idx in range(1, len(middle_initials) + 1):
-                _add_variant(f"{first_initial} {' '.join(middle_initials[:idx])} {last_name}")
-
-            # First name + middle initials + last.
-            _add_variant(f"{first_name} {' '.join(middle_initials)} {last_name}")
 
     return variants
 
