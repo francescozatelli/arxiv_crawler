@@ -570,7 +570,6 @@
                         "last_name":  "vandersypen",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "Lieven",
@@ -581,7 +580,6 @@
                         "last_name":  "veldhorst",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "Menno",
@@ -683,7 +681,6 @@
                         "last_name":  "Petta",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "Jason",
@@ -694,7 +691,6 @@
                         "last_name":  "Ladd",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "Thaddeus",
@@ -735,7 +731,6 @@
                         "last_name":  "Hendrickx",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "Nico",
@@ -831,7 +826,6 @@
                         "last_name":  "Gonzalez-Zalba",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "M",
@@ -842,7 +836,6 @@
                         "last_name":  "Morton",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "John",
@@ -875,7 +868,6 @@
                         "last_name":  "Otte",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "Sander",
@@ -885,8 +877,6 @@
                     {
                         "last_name":  "Gidney",
                         "categories":  [
-                                           "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "Craig",
@@ -928,18 +918,6 @@
                         "last_name":  "Preskill",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
-                                           "quant-ph"
-                                       ],
-                        "first_name":  "John",
-                        "middle_name":  "",
-                        "require_given_name":  true
-                    },
-                    {
-                        "last_name":  "Preskill",
-                        "categories":  [
-                                           "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "John",
@@ -961,7 +939,6 @@
                         "last_name":  "Kuemmeth",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "Ferdinand",
@@ -982,7 +959,6 @@
                         "last_name":  "Eriksson",
                         "categories":  [
                                            "cond-mat.mes-hall",
-                                           "cond-mat.supr-con",
                                            "quant-ph"
                                        ],
                         "first_name":  "Mark",
