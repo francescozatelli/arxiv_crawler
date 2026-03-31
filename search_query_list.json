@@ -17,10 +17,7 @@
                            "all:topological+AND+superconduct*+AND+nanowire+AND+cat:cond-mat.mes-hall",
                            "all:parity+AND+readout+AND+superconduct*+AND+cat:cond-mat.supr-con",
                            "all:subgap+AND+state*+AND+superconduct*+AND+cat:cond-mat.supr-con",
-                           "all:hybrid+AND+nanowire+AND+superconduct*+AND+cat:cond-mat.mes-hall",
-                           "all:quantum+capacitance+AND+superconduct*",
-                           "all:charge+sensing+AND+superconduct*+AND+dot",
-                           "all:dispersive+readout+AND+superconduct*+AND+dot"
+                           "all:hybrid+AND+nanowire+AND+superconduct*+AND+cat:cond-mat.mes-hall"
                        ],
     "authors":  [
                     {
