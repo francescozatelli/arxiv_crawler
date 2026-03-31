@@ -12,7 +12,15 @@
                            "au:srijit+AND+au:goswami+AND+cat:cond-mat.mes-hall",
                            "au:thomas+AND+au:ihn+AND+cat:cond-mat.mes-hall",
                            "au:y+AND+au:oreg+AND+cat:cond-mat.mes-hall",
-                           "au:seoane+AND+au:souto+AND+cat:cond-mat.mes-hall"
+                           "au:seoane+AND+au:souto+AND+cat:cond-mat.mes-hall",
+                           "all:kitaev+AND+chain+AND+cat:cond-mat.supr-con",
+                           "all:topological+AND+superconduct*+AND+nanowire+AND+cat:cond-mat.mes-hall",
+                           "all:parity+AND+readout+AND+superconduct*+AND+cat:cond-mat.supr-con",
+                           "all:subgap+AND+state*+AND+superconduct*+AND+cat:cond-mat.supr-con",
+                           "all:hybrid+AND+nanowire+AND+superconduct*+AND+cat:cond-mat.mes-hall",
+                           "all:quantum+capacitance+AND+superconduct*",
+                           "all:charge+sensing+AND+superconduct*+AND+dot",
+                           "all:dispersive+readout+AND+superconduct*+AND+dot"
                        ],
     "authors":  [
                     {
@@ -917,6 +925,124 @@
                                        ],
                         "first_name":  "Hongqi",
                         "middle_name":  "Q",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Preskill",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "John",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Preskill",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "John",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Schoelkopf",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Robert",
+                        "middle_name":  "J",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Kuemmeth",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Ferdinand",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Danon",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Jeroen",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Eriksson",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Mark",
+                        "middle_name":  "A",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "van Heck",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Bernard",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Kou",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Angela",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Pop",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con",
+                                           "quant-ph"
+                                       ],
+                        "first_name":  "Ioan",
+                        "middle_name":  "M",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Zhang",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Hao",
+                        "middle_name":  "",
+                        "require_given_name":  true
+                    },
+                    {
+                        "last_name":  "Nadj-Perge",
+                        "categories":  [
+                                           "cond-mat.mes-hall",
+                                           "cond-mat.supr-con"
+                                       ],
+                        "first_name":  "Stevan",
+                        "middle_name":  "",
                         "require_given_name":  true
                     }
                 ]
