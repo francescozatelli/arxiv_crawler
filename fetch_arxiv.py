@@ -5,6 +5,7 @@ add -d for debugging (log beginning of each stage)
 
 import json
 import os
+import random
 import re
 import ssl
 import sys
@@ -54,6 +55,50 @@ def _extract_author_terms(search_query):
         if raw:
             terms.append(raw)
     return terms
+
+
+def _extract_category_terms(search_query):
+    """Extract cat: terms from one search query string."""
+    categories = []
+    for chunk in search_query.split('+AND+'):
+        if not chunk.startswith('cat:'):
+            continue
+
+        category = chunk[4:].strip()
+        if category:
+            categories.append(category)
+    return categories
+
+
+def _build_author_token_fallback_query(search_query, author_terms):
+    """Build an author-token fallback query for zero-result quoted author searches.
+
+    Example:
+      au:%22John%20Preskill%22+AND+cat:quant-ph
+      -> au:john+AND+au:preskill+AND+cat:quant-ph
+    """
+    if not author_terms:
+        return None
+
+    fallback_terms = []
+    for term in author_terms:
+        term_tokens = _normalize_tokens(term)
+        if not term_tokens:
+            continue
+
+        # Keep the query narrow: first token + surname token.
+        if len(term_tokens) == 1:
+            fallback_terms.append(f'au:{quote(term_tokens[0], safe="")}')
+        else:
+            fallback_terms.append(f'au:{quote(term_tokens[0], safe="")}')
+            fallback_terms.append(f'au:{quote(term_tokens[-1], safe="")}')
+
+    category_terms = [f'cat:{cat}' for cat in _extract_category_terms(search_query)]
+    if not fallback_terms:
+        return None
+
+    parts = fallback_terms + category_terms
+    return '+AND+'.join(parts)
 
 
 def _author_term_matches_name(author_term, author_name):
@@ -349,6 +394,112 @@ def _truncate_for_log(text, max_len=140):
         return text
     return text[: max_len - 3] + '...'
 
+
+def _sleep_with_jitter(base_seconds, jitter_seconds):
+    """Sleep with symmetric jitter while keeping delay non-negative."""
+    delay = max(0.0, base_seconds + random.uniform(-jitter_seconds, jitter_seconds))
+    time.sleep(delay)
+
+
+def _execute_query(base_url, search_query, start, max_results, sorting_order):
+    """Execute one arXiv query with fallback and return structured results."""
+    author_terms = _extract_author_terms(search_query)
+    api_query = f'search_query={search_query}&start={start}&max_results={max_results}'
+
+    try:
+        parsed = _parse_arxiv_feed(base_url + api_query + sorting_order, max_attempts=5, base_sleep_seconds=3.0)
+    except RuntimeError as exc:
+        return {
+            'status': 'failed',
+            'query': search_query,
+            'error': repr(exc),
+            'raw_entry_count': 0,
+            'matched_entry_count': 0,
+            'sample_ids': [],
+            'rows': [],
+            'author_terms': author_terms,
+            'suspicious_zero': False,
+        }
+
+    raw_entry_count = len(parsed.entries)
+
+    # arXiv occasionally returns empty result sets for quoted author queries.
+    # Retry once with tokenized author terms while preserving strict author
+    # post-filtering to avoid false positives.
+    if raw_entry_count == 0 and author_terms:
+        fallback_query = _build_author_token_fallback_query(search_query, author_terms)
+        if fallback_query and fallback_query != search_query:
+            fallback_api_query = f'search_query={fallback_query}&start={start}&max_results={max_results}'
+            try:
+                parsed_fallback = _parse_arxiv_feed(
+                    base_url + fallback_api_query + sorting_order,
+                    max_attempts=3,
+                    base_sleep_seconds=3.0,
+                )
+                fallback_count = len(parsed_fallback.entries)
+                if fallback_count > 0:
+                    print(
+                        'Warning: recovered zero-result author query with token fallback'
+                        f' | query={_truncate_for_log(search_query)}'
+                        f' | fallback_query={_truncate_for_log(fallback_query)}'
+                        f' | recovered_entries={fallback_count}'
+                    )
+                    parsed = parsed_fallback
+                    raw_entry_count = fallback_count
+            except RuntimeError:
+                # Keep original zero-result response if fallback also fails.
+                pass
+
+    rows = []
+    matched_entry_count = 0
+    sample_ids = []
+
+    for entry in parsed.entries:
+        if not _entry_matches_author_terms(entry.authors, author_terms):
+            continue
+
+        dic_stored = {}
+        dic_stored['id'] = entry.id.split('/')[-1].split('v')[0]
+        matched_entry_count += 1
+        if len(sample_ids) < 3:
+            sample_ids.append(dic_stored['id'])
+        dic_stored['author_list'] = _join_authors(entry.authors)
+        dic_stored['title'] = _remove_newlines(entry.title)
+        dic_stored['arxiv_primary_category'] = entry.arxiv_primary_category['term']
+        dic_stored['published'] = _convert_time(entry.published)
+
+        # replace the query with legible terms
+        legible_query = (
+            unquote_plus(search_query)
+            .replace('"', '')
+            .replace('%22', '')
+            .replace("+", " ")
+            .replace("AND", " ")
+            .replace("all:", " Content : ")
+            .replace("au:", "Author : ")
+            .replace("\n", "")
+            .replace("cat:", " ")
+            .replace("cond-mat.supr-con", "")
+            .replace("cond-mat.mes-hall", "")
+            .replace("ti:", "Title : ")
+        )
+
+        dic_stored['search_query'] = str(legible_query)
+        dic_stored['link'] = entry.link
+        rows.append(dic_stored)
+
+    suspicious_zero = bool(author_terms) and raw_entry_count == 0
+    return {
+        'status': 'ok',
+        'query': search_query,
+        'raw_entry_count': raw_entry_count,
+        'matched_entry_count': matched_entry_count,
+        'sample_ids': sample_ids,
+        'rows': rows,
+        'author_terms': author_terms,
+        'suspicious_zero': suspicious_zero,
+    }
+
 def query_arxiv_org(query_input):
     """Search for query items on arXiv and return the list of results"""
 
@@ -358,88 +509,92 @@ def query_arxiv_org(query_input):
     # each search item (legacy txt or structured json)
     search_keywords = _load_search_queries(query_input)
     # arXiv recommends keeping requests slow to avoid throttling.
-    request_delay_seconds = 3.0
+    request_delay_seconds = 4.0
+    request_delay_jitter_seconds = 0.8
+    second_pass_delay_seconds = 10.0
+    second_pass_delay_jitter_seconds = 1.5
     # some options
     start = 0
     max_results = 50 # see arXiv API for max result limits
     sorting_order = '&sortBy=submittedDate&sortOrder=descending'
 
     result_list = []
-    failed_queries = []
+    final_failed_queries = []
+    final_suspicious_zero_queries = []
     query_audit = []
+    second_pass_candidates = []
 
-    # search for the keywords/authors one by one
+    # First pass: search for the keywords/authors one by one.
     for query_idx, search_query in enumerate(search_keywords, start=1):
         if query_idx > 1:
-            time.sleep(request_delay_seconds)
+            _sleep_with_jitter(request_delay_seconds, request_delay_jitter_seconds)
 
-        author_terms = _extract_author_terms(search_query)
-        query = f'search_query={search_query}&start={start}&max_results={max_results}'
+        query_result = _execute_query(base_url, search_query, start, max_results, sorting_order)
 
-        try:
-            d = _parse_arxiv_feed(base_url+query+sorting_order, max_attempts=5, base_sleep_seconds=3.0)
-        except RuntimeError as exc:
-            failed_queries.append((search_query, repr(exc)))
-            query_audit.append({
-                'status': 'failed',
-                'query': search_query,
-                'error': repr(exc),
-            })
-            print(f'Warning: skipping query after retries: {search_query} | {exc}')
+        audit_item = {
+            'phase': 'pass1',
+            'status': query_result['status'],
+            'query': search_query,
+        }
+
+        if query_result['status'] == 'failed':
+            audit_item['error'] = query_result['error']
+            second_pass_candidates.append(search_query)
+            print(f'Warning: scheduling second-pass retry after failure: {search_query} | {query_result["error"]}')
+            query_audit.append(audit_item)
             continue
 
-        raw_entry_count = len(d.entries)
-        matched_entry_count = 0
-        sample_ids = []
+        result_list.extend(query_result['rows'])
+        audit_item['raw_entry_count'] = query_result['raw_entry_count']
+        audit_item['matched_entry_count'] = query_result['matched_entry_count']
+        audit_item['sample_ids'] = query_result['sample_ids']
+        query_audit.append(audit_item)
 
-        for entry in d.entries:
-            if not _entry_matches_author_terms(entry.authors, author_terms):
-                continue
+        if query_result['suspicious_zero']:
+            second_pass_candidates.append(search_query)
 
-            dic_stored = {}
-            dic_stored['id'] = entry.id.split('/')[-1].split('v')[0]
-            matched_entry_count += 1
-            if len(sample_ids) < 3:
-                sample_ids.append(dic_stored['id'])
-            dic_stored['author_list'] = _join_authors(entry.authors)
-            dic_stored['title'] = _remove_newlines(entry.title)
-            dic_stored['arxiv_primary_category'] = entry.arxiv_primary_category['term']
-            dic_stored['published'] = _convert_time(entry.published)
+    # Second pass: retry failed and suspicious zero-result author queries.
+    if second_pass_candidates:
+        print(
+            f'Info: second-pass retry for {len(second_pass_candidates)} queries '
+            '(failed or suspicious zero-result author queries).'
+        )
 
-            # replace the query with legible terms
-            query = (
-                unquote_plus(search_query)
-                .replace('"', '')
-                .replace('%22', '')
-                .replace("+", " ")
-                .replace("AND", " ")
-                .replace("all:", " Content : ")
-                .replace("au:", "Author : ")
-                .replace("\n", "")
-                .replace("cat:", " ")
-                .replace("cond-mat.supr-con", "")
-                .replace("cond-mat.mes-hall" , "")
-                .replace("ti:", "Title : ")
-            )
+    for retry_idx, search_query in enumerate(second_pass_candidates, start=1):
+        if retry_idx > 1:
+            _sleep_with_jitter(second_pass_delay_seconds, second_pass_delay_jitter_seconds)
 
-            
-            dic_stored['search_query'] = str(query)
-            dic_stored['link'] = entry.link
-            result_list.append(dic_stored)
-
-        query_audit.append({
-            'status': 'ok',
+        query_result = _execute_query(base_url, search_query, start, max_results, sorting_order)
+        audit_item = {
+            'phase': 'pass2',
+            'status': query_result['status'],
             'query': search_query,
-            'raw_entry_count': raw_entry_count,
-            'matched_entry_count': matched_entry_count,
-            'sample_ids': sample_ids,
-        })
+        }
+
+        if query_result['status'] == 'failed':
+            final_failed_queries.append((search_query, query_result['error']))
+            audit_item['error'] = query_result['error']
+            print(f'Warning: skipping query after second-pass retries: {search_query} | {query_result["error"]}')
+            query_audit.append(audit_item)
+            continue
+
+        audit_item['raw_entry_count'] = query_result['raw_entry_count']
+        audit_item['matched_entry_count'] = query_result['matched_entry_count']
+        audit_item['sample_ids'] = query_result['sample_ids']
+        query_audit.append(audit_item)
+
+        if query_result['rows']:
+            result_list.extend(query_result['rows'])
+
+        if query_result['suspicious_zero']:
+            final_suspicious_zero_queries.append(search_query)
 
     # Per-query diagnostics: helps detect silent misses in successful runs.
     for item in query_audit:
         if item['status'] == 'failed':
             print(
                 'Query audit | status=failed'
+                f' | phase={item.get("phase", "pass1")}'
                 f' | query={_truncate_for_log(item["query"])}'
                 f' | error={item["error"]}'
             )
@@ -448,16 +603,24 @@ def query_arxiv_org(query_input):
         sample_ids_text = ','.join(item['sample_ids']) if item['sample_ids'] else '-'
         print(
             'Query audit | status=ok'
+            f' | phase={item.get("phase", "pass1")}'
             f' | raw_entries={item["raw_entry_count"]}'
             f' | matched_entries={item["matched_entry_count"]}'
             f' | sample_ids={sample_ids_text}'
             f' | query={_truncate_for_log(item["query"])}'
         )
 
-    if failed_queries:
-        print(f'Warning: {len(failed_queries)} queries failed and were skipped.')
+    if final_suspicious_zero_queries:
+        print(
+            'Warning: '
+            f'{len(final_suspicious_zero_queries)} author queries returned zero raw entries '
+            'even after second pass.'
+        )
+
+    if final_failed_queries:
+        print(f'Warning: {len(final_failed_queries)} queries failed and were skipped.')
         # If every query failed, fail loudly because output is unusable.
-        if len(failed_queries) == len(search_keywords):
+        if len(final_failed_queries) == len(search_keywords):
             raise RuntimeError('All arXiv queries failed; aborting crawl.')
 
     return result_list
