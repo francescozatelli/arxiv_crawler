@@ -56,6 +56,50 @@ def _extract_author_terms(search_query):
     return terms
 
 
+def _extract_category_terms(search_query):
+    """Extract cat: terms from one search query string."""
+    categories = []
+    for chunk in search_query.split('+AND+'):
+        if not chunk.startswith('cat:'):
+            continue
+
+        category = chunk[4:].strip()
+        if category:
+            categories.append(category)
+    return categories
+
+
+def _build_author_token_fallback_query(search_query, author_terms):
+    """Build an author-token fallback query for zero-result quoted author searches.
+
+    Example:
+      au:%22John%20Preskill%22+AND+cat:quant-ph
+      -> au:john+AND+au:preskill+AND+cat:quant-ph
+    """
+    if not author_terms:
+        return None
+
+    fallback_terms = []
+    for term in author_terms:
+        term_tokens = _normalize_tokens(term)
+        if not term_tokens:
+            continue
+
+        # Keep the query narrow: first token + surname token.
+        if len(term_tokens) == 1:
+            fallback_terms.append(f'au:{quote(term_tokens[0], safe="")}')
+        else:
+            fallback_terms.append(f'au:{quote(term_tokens[0], safe="")}')
+            fallback_terms.append(f'au:{quote(term_tokens[-1], safe="")}')
+
+    category_terms = [f'cat:{cat}' for cat in _extract_category_terms(search_query)]
+    if not fallback_terms:
+        return None
+
+    parts = fallback_terms + category_terms
+    return '+AND+'.join(parts)
+
+
 def _author_term_matches_name(author_term, author_name):
     """Check whether one au: term matches one concrete author name."""
     term_tokens = _normalize_tokens(author_term)
@@ -389,6 +433,33 @@ def query_arxiv_org(query_input):
             continue
 
         raw_entry_count = len(d.entries)
+        # arXiv occasionally returns empty result sets for quoted author queries.
+        # Retry once with tokenized author terms while preserving strict author
+        # post-filtering to avoid false positives.
+        if raw_entry_count == 0 and author_terms:
+            fallback_query = _build_author_token_fallback_query(search_query, author_terms)
+            if fallback_query and fallback_query != search_query:
+                fallback_api_query = f'search_query={fallback_query}&start={start}&max_results={max_results}'
+                try:
+                    d_fallback = _parse_arxiv_feed(
+                        base_url + fallback_api_query + sorting_order,
+                        max_attempts=3,
+                        base_sleep_seconds=3.0,
+                    )
+                    fallback_count = len(d_fallback.entries)
+                    if fallback_count > 0:
+                        print(
+                            'Warning: recovered zero-result author query with token fallback'
+                            f' | query={_truncate_for_log(search_query)}'
+                            f' | fallback_query={_truncate_for_log(fallback_query)}'
+                            f' | recovered_entries={fallback_count}'
+                        )
+                        d = d_fallback
+                        raw_entry_count = fallback_count
+                except RuntimeError:
+                    # Keep original zero-result response if fallback also fails.
+                    pass
+
         matched_entry_count = 0
         sample_ids = []
 
