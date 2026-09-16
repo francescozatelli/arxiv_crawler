@@ -40,7 +40,7 @@ jobs:
 
     - name: Run Python Script
       run: |
-        python fetch_arxiv.py config.json  # Replace with the actual name of your Python script
+        python -u fetch_arxiv.py config.json  # Replace with the actual name of your Python script
 
     - name: Commit and Push Changes
       run: |
