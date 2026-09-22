@@ -11,14 +11,24 @@ import ssl
 import sys
 import time
 import unicodedata
-from datetime import datetime
-from urllib.parse import quote, unquote_plus
+from datetime import date, datetime, timedelta
+from urllib.error import HTTPError
+from urllib.parse import quote, unquote_plus, urlencode
 from urllib.request import Request, urlopen
+from xml.etree import ElementTree
 
 import feedparser
 import pandas as pd
 
 import database_manipulation as dbmanip
+
+
+ARXIV_USER_AGENT = (
+    'arxiv-crawler/1.0 '
+    '(contact: https://github.com/francescozatel/arxiv_crawler)'
+)
+OAI_NAMESPACE = 'http://www.openarchives.org/OAI/2.0/'
+ARXIV_OAI_NAMESPACE = 'http://arxiv.org/OAI/arXiv/'
 
 
 def _convert_time(val):
@@ -147,10 +157,23 @@ def _entry_matches_author_terms(entry_authors, author_terms):
         return True
 
     author_names = [entry_authors[i]['name'] for i in range(len(entry_authors))]
-    return all(
+    if all(
         any(_author_term_matches_name(term, author_name) for author_name in author_names)
         for term in author_terms
-    )
+    ):
+        return True
+
+    # Legacy custom queries sometimes express one name as separate clauses,
+    # for example au:chetan AND au:nayak. Combine those single-token clauses
+    # before applying the same strict given-name/surname matcher.
+    if len(author_terms) > 1 and all(len(_normalize_tokens(term)) == 1 for term in author_terms):
+        combined_term = ' '.join(author_terms)
+        return any(
+            _author_term_matches_name(combined_term, author_name)
+            for author_name in author_names
+        )
+
+    return False
 
 
 def _split_middle_names(middle_names):
@@ -309,8 +332,14 @@ def _is_transient_parse_error(exc):
 
 
 def _download_bytes(url, timeout=30, insecure_ssl=False):
-    """Download raw response bytes with a stable User-Agent."""
-    request = Request(url, headers={'User-Agent': 'arxiv-crawler/1.0 (+github-actions)'})
+    """Download raw response bytes and fail on non-2xx HTTP responses."""
+    request = Request(
+        url,
+        headers={
+            'User-Agent': ARXIV_USER_AGENT,
+            'Accept': 'application/atom+xml, text/xml;q=0.9',
+        },
+    )
     if insecure_ssl:
         insecure_ctx = ssl.create_default_context()
         insecure_ctx.check_hostname = False
@@ -334,11 +363,54 @@ def _parse_arxiv_feed(url, max_attempts=3, base_sleep_seconds=1.0):
     last_error = None
 
     for attempt in range(1, max_attempts + 1):
-        parsed = feedparser.parse(url)
+        try:
+            response_bytes = _download_bytes(url)
+        except HTTPError as exc:
+            last_error = exc
+
+            # 406 is currently returned for rejected query-API traffic. It is
+            # not transient, and feedparser.parse(url) used to silently turn
+            # it into an apparently valid empty result set.
+            if exc.code == 406:
+                break
+
+            if attempt < max_attempts:
+                if exc.code == 429 or 500 <= exc.code < 600:
+                    time.sleep(max(10.0, base_sleep_seconds * (2 ** attempt)))
+                else:
+                    time.sleep(base_sleep_seconds * attempt)
+                continue
+            break
+        except Exception as exc:
+            last_error = exc
+            if _is_ssl_cert_error(exc):
+                try:
+                    response_bytes = _download_bytes(url, insecure_ssl=True)
+                    print('Warning: SSL verification failed, used insecure fallback for arXiv API.')
+                except Exception as fallback_exc:
+                    last_error = fallback_exc
+                    if attempt < max_attempts:
+                        time.sleep(base_sleep_seconds * attempt)
+                        continue
+                    break
+            else:
+                if attempt < max_attempts:
+                    time.sleep(base_sleep_seconds * attempt)
+                    continue
+                break
+
+        parsed = feedparser.parse(response_bytes)
         bozo_exception = getattr(parsed, 'bozo_exception', None)
         entry_count = len(getattr(parsed, 'entries', []))
 
-        if not getattr(parsed, 'bozo', False):
+        # A real arXiv response is an Atom feed with an id. Checking this is
+        # important because feedparser considers an empty/non-feed HTTP body a
+        # clean parse with zero entries in some cases.
+        is_atom_feed = (
+            str(getattr(parsed, 'version', '')).startswith('atom')
+            and bool(getattr(parsed, 'feed', {}).get('id'))
+        )
+        if not getattr(parsed, 'bozo', False) and is_atom_feed:
             return parsed
 
         # Some bozo parser states still contain valid entries; accept those.
@@ -346,43 +418,16 @@ def _parse_arxiv_feed(url, max_attempts=3, base_sleep_seconds=1.0):
             print(f'Warning: bozo parse with {entry_count} entries, continuing: {bozo_exception!r}')
             return parsed
 
-        # Handle local trust-store issues with a targeted fallback.
-        if _is_ssl_cert_error(bozo_exception):
-            try:
-                parsed_insecure = feedparser.parse(_download_bytes(url, insecure_ssl=True))
-                if not getattr(parsed_insecure, 'bozo', False):
-                    print('Warning: SSL verification failed, used insecure fallback for arXiv API.')
-                    return parsed_insecure
-                last_error = getattr(parsed_insecure, 'bozo_exception', bozo_exception)
-            except Exception as exc:
-                last_error = exc
-        elif _is_rate_limited_error(bozo_exception):
-            # arXiv API throttling: wait longer before retrying.
-            last_error = bozo_exception
-            if attempt < max_attempts:
-                time.sleep(max(10.0, base_sleep_seconds * (2 ** attempt)))
-                continue
-        elif _is_transient_parse_error(bozo_exception):
-            # Retry once with explicit byte download and then back off.
-            try:
-                parsed_retry = feedparser.parse(_download_bytes(url))
-                if not getattr(parsed_retry, 'bozo', False):
-                    return parsed_retry
-                if len(getattr(parsed_retry, 'entries', [])) > 0:
-                    print('Warning: transient parse error, recovered entries on byte retry.')
-                    return parsed_retry
-                last_error = getattr(parsed_retry, 'bozo_exception', bozo_exception)
-            except Exception as exc:
-                last_error = exc
-
-            if attempt < max_attempts:
-                time.sleep(max(10.0, base_sleep_seconds * (2 ** attempt)))
-                continue
+        if not is_atom_feed and bozo_exception is None:
+            last_error = RuntimeError('Response was not an arXiv Atom feed')
         else:
             last_error = bozo_exception
 
         if attempt < max_attempts:
-            sleep_seconds = base_sleep_seconds * attempt
+            if _is_rate_limited_error(last_error) or _is_transient_parse_error(last_error):
+                sleep_seconds = max(10.0, base_sleep_seconds * (2 ** attempt))
+            else:
+                sleep_seconds = base_sleep_seconds * attempt
             time.sleep(sleep_seconds)
 
     raise RuntimeError(f'arXiv API parse failed after {max_attempts} attempts: {last_error!r}')
@@ -401,13 +446,46 @@ def _sleep_with_jitter(base_seconds, jitter_seconds):
     time.sleep(delay)
 
 
+def _build_api_url(base_url, search_query, start, max_results, sort_by, sort_order):
+    """Build a fully encoded arXiv query URL from the legacy query format."""
+    parameters = {
+        'search_query': unquote_plus(search_query),
+        'start': start,
+        'max_results': max_results,
+        'sortBy': sort_by,
+        'sortOrder': sort_order,
+    }
+    return base_url + urlencode(parameters)
+
+
+def _legible_query(search_query):
+    """Turn an encoded search query into the label stored in the database."""
+    return (
+        unquote_plus(search_query)
+        .replace('"', '')
+        .replace('%22', '')
+        .replace('+', ' ')
+        .replace('AND', ' ')
+        .replace('all:', ' Content : ')
+        .replace('au:', 'Author : ')
+        .replace('\n', '')
+        .replace('cat:', ' ')
+        .replace('cond-mat.supr-con', '')
+        .replace('cond-mat.mes-hall', '')
+        .replace('ti:', 'Title : ')
+    )
+
+
 def _execute_query(base_url, search_query, start, max_results, sorting_order):
     """Execute one arXiv query with fallback and return structured results."""
     author_terms = _extract_author_terms(search_query)
-    api_query = f'search_query={search_query}&start={start}&max_results={max_results}'
+    sort_by, sort_order = sorting_order
+    api_url = _build_api_url(
+        base_url, search_query, start, max_results, sort_by, sort_order
+    )
 
     try:
-        parsed = _parse_arxiv_feed(base_url + api_query + sorting_order, max_attempts=5, base_sleep_seconds=3.0)
+        parsed = _parse_arxiv_feed(api_url, max_attempts=5, base_sleep_seconds=3.0)
     except RuntimeError as exc:
         return {
             'status': 'failed',
@@ -429,10 +507,12 @@ def _execute_query(base_url, search_query, start, max_results, sorting_order):
     if raw_entry_count == 0 and author_terms:
         fallback_query = _build_author_token_fallback_query(search_query, author_terms)
         if fallback_query and fallback_query != search_query:
-            fallback_api_query = f'search_query={fallback_query}&start={start}&max_results={max_results}'
+            fallback_api_url = _build_api_url(
+                base_url, fallback_query, start, max_results, sort_by, sort_order
+            )
             try:
                 parsed_fallback = _parse_arxiv_feed(
-                    base_url + fallback_api_query + sorting_order,
+                    fallback_api_url,
                     max_attempts=3,
                     base_sleep_seconds=3.0,
                 )
@@ -468,23 +548,7 @@ def _execute_query(base_url, search_query, start, max_results, sorting_order):
         dic_stored['arxiv_primary_category'] = entry.arxiv_primary_category['term']
         dic_stored['published'] = _convert_time(entry.published)
 
-        # replace the query with legible terms
-        legible_query = (
-            unquote_plus(search_query)
-            .replace('"', '')
-            .replace('%22', '')
-            .replace("+", " ")
-            .replace("AND", " ")
-            .replace("all:", " Content : ")
-            .replace("au:", "Author : ")
-            .replace("\n", "")
-            .replace("cat:", " ")
-            .replace("cond-mat.supr-con", "")
-            .replace("cond-mat.mes-hall", "")
-            .replace("ti:", "Title : ")
-        )
-
-        dic_stored['search_query'] = str(legible_query)
+        dic_stored['search_query'] = str(_legible_query(search_query))
         dic_stored['link'] = entry.link
         rows.append(dic_stored)
 
@@ -500,7 +564,256 @@ def _execute_query(base_url, search_query, start, max_results, sorting_order):
         'suspicious_zero': suspicious_zero,
     }
 
-def query_arxiv_org(query_input):
+
+def _query_api_was_rejected(error_text):
+    """Return True for the persistent query-API rejection seen in CI."""
+    return 'HTTPError 406' in error_text or 'HTTP Error 406' in error_text
+
+
+def _query_clauses(search_query):
+    """Return (field, value) clauses from the repository's query format."""
+    clauses = []
+    for chunk in search_query.split('+AND+'):
+        decoded = unquote_plus(chunk).strip().strip('"')
+        if not decoded:
+            continue
+
+        if ':' in decoded:
+            candidate_field, value = decoded.split(':', 1)
+            if candidate_field in {'all', 'ti', 'abs', 'au', 'cat'}:
+                clauses.append((candidate_field, value.strip().strip('"')))
+                continue
+
+        # arXiv treats unqualified terms as an all-fields search. Several
+        # existing custom queries rely on this shorthand.
+        clauses.append(('all', decoded))
+
+    return clauses
+
+
+def _text_matches_query_term(text, term):
+    """Match a phrase or trailing-wildcard term against normalized text."""
+    text_tokens = _normalize_tokens(text)
+    term_tokens = _normalize_tokens(term)
+    if not text_tokens or not term_tokens:
+        return False
+
+    has_trailing_wildcard = term.rstrip().endswith('*')
+    if has_trailing_wildcard and len(term_tokens) == 1:
+        return any(token.startswith(term_tokens[0]) for token in text_tokens)
+
+    width = len(term_tokens)
+    return any(text_tokens[index:index + width] == term_tokens for index in range(len(text_tokens) - width + 1))
+
+
+def _oai_record_matches_query(record, search_query):
+    """Apply the configured arXiv query semantics to one OAI record."""
+    author_terms = _extract_author_terms(search_query)
+    entry_authors = [{'name': name} for name in record['authors']]
+    if not _entry_matches_author_terms(entry_authors, author_terms):
+        return False
+
+    for field, value in _query_clauses(search_query):
+        if field == 'au':
+            # Author terms are checked together above so that initials and
+            # given-name variants use the existing strict matching rules.
+            continue
+        if field == 'cat':
+            if value not in record['categories']:
+                return False
+            continue
+        if field == 'ti':
+            haystack = record['title']
+        elif field == 'abs':
+            haystack = record['abstract']
+        else:
+            haystack = (
+                f"{record['title']} {record['abstract']} "
+                f"{' '.join(record['authors'])}"
+            )
+        if not _text_matches_query_term(haystack, value):
+            return False
+
+    return True
+
+
+def _parse_oai_records(response_bytes):
+    """Parse one arXiv OAI-PMH page into normalized records and a token."""
+    namespaces = {
+        'oai': OAI_NAMESPACE,
+        'arxiv': ARXIV_OAI_NAMESPACE,
+    }
+    root = ElementTree.fromstring(response_bytes)
+
+    errors = root.findall('oai:error', namespaces)
+    if errors:
+        if all(error.get('code') == 'noRecordsMatch' for error in errors):
+            return [], None
+        descriptions = '; '.join(
+            f"{error.get('code', 'unknown')}: {(error.text or '').strip()}"
+            for error in errors
+        )
+        raise RuntimeError(f'arXiv OAI-PMH error: {descriptions}')
+
+    parsed_records = []
+    for record_node in root.findall('.//oai:record', namespaces):
+        header = record_node.find('oai:header', namespaces)
+        if header is not None and header.get('status') == 'deleted':
+            continue
+
+        metadata = record_node.find('oai:metadata/arxiv:arXiv', namespaces)
+        if metadata is None:
+            continue
+
+        arxiv_id = (metadata.findtext('arxiv:id', namespaces=namespaces) or '').strip()
+        title = ' '.join((metadata.findtext('arxiv:title', namespaces=namespaces) or '').split())
+        abstract = ' '.join((metadata.findtext('arxiv:abstract', namespaces=namespaces) or '').split())
+        created = (metadata.findtext('arxiv:created', namespaces=namespaces) or '').strip()
+        category_text = metadata.findtext('arxiv:categories', namespaces=namespaces) or ''
+        categories = category_text.split()
+
+        authors = []
+        for author_node in metadata.findall('arxiv:authors/arxiv:author', namespaces):
+            keyname = (author_node.findtext('arxiv:keyname', namespaces=namespaces) or '').strip()
+            forenames = (author_node.findtext('arxiv:forenames', namespaces=namespaces) or '').strip()
+            suffix = (author_node.findtext('arxiv:suffix', namespaces=namespaces) or '').strip()
+            author_name = ' '.join(part for part in (forenames, keyname, suffix) if part)
+            if author_name:
+                authors.append(author_name)
+
+        if not arxiv_id or not title or not created or not categories:
+            continue
+
+        parsed_records.append({
+            'id': arxiv_id,
+            'authors': authors,
+            'title': title,
+            'abstract': abstract,
+            'categories': categories,
+            'published': f'{created} 00:00:00',
+            'link': f'https://arxiv.org/abs/{arxiv_id}',
+        })
+
+    token_node = root.find('.//oai:resumptionToken', namespaces)
+    token = (token_node.text or '').strip() if token_node is not None else ''
+    return parsed_records, token or None
+
+
+def _category_to_oai_set(category):
+    """Map an arXiv category to the corresponding OAI-PMH set."""
+    if category.startswith('cond-mat.'):
+        return f"physics:cond-mat:{category.split('.', 1)[1]}"
+    if category == 'quant-ph':
+        return 'physics:quant-ph'
+    return None
+
+
+def _fetch_oai_set(set_spec, start_date, end_date):
+    """Retrieve all pages for one category/date window from OAI-PMH."""
+    base_url = 'https://oaipmh.arxiv.org/oai?'
+    parameters = {
+        'verb': 'ListRecords',
+        'metadataPrefix': 'arXiv',
+        'set': set_spec,
+        'from': start_date.isoformat(),
+        'until': end_date.isoformat(),
+    }
+    records = []
+    request_number = 0
+
+    while True:
+        if request_number:
+            _sleep_with_jitter(3.0, 0.5)
+        url = base_url + urlencode(parameters)
+        try:
+            response_bytes = _download_bytes(url, timeout=60)
+        except Exception as exc:
+            raise RuntimeError(f'arXiv OAI-PMH request failed for {set_spec}: {exc!r}') from exc
+
+        page_records, token = _parse_oai_records(response_bytes)
+        records.extend(page_records)
+        request_number += 1
+        if not token:
+            return records
+        parameters = {'verb': 'ListRecords', 'resumptionToken': token}
+
+
+def _coerce_fallback_start_date(since_date, end_date):
+    """Select an incremental window, or a one-year bootstrap window."""
+    earliest_bootstrap = end_date - timedelta(days=365)
+    if since_date is None:
+        return earliest_bootstrap
+    if isinstance(since_date, datetime):
+        candidate = since_date.date()
+    elif isinstance(since_date, date):
+        candidate = since_date
+    else:
+        try:
+            candidate = datetime.fromisoformat(str(since_date)).date()
+        except ValueError:
+            return earliest_bootstrap
+    return max(earliest_bootstrap, candidate - timedelta(days=3))
+
+
+def _query_arxiv_oai(search_keywords, since_date=None):
+    """Fetch category metadata via OAI-PMH and filter all queries locally."""
+    categories = sorted({
+        category
+        for query in search_keywords
+        for category in _extract_category_terms(query)
+    })
+    oai_sets = sorted({
+        set_spec
+        for category in categories
+        for set_spec in [_category_to_oai_set(category)]
+        if set_spec
+    })
+    if not oai_sets:
+        raise RuntimeError('Cannot use OAI-PMH fallback: no supported categories in queries.')
+
+    end_date = date.today()
+    start_date = _coerce_fallback_start_date(since_date, end_date)
+    print(
+        'Warning: arXiv query API rejected the request; using OAI-PMH fallback'
+        f' | from={start_date.isoformat()} | until={end_date.isoformat()}'
+        f' | sets={len(oai_sets)}'
+    )
+
+    records_by_id = {}
+    for set_index, set_spec in enumerate(oai_sets):
+        if set_index:
+            _sleep_with_jitter(3.0, 0.5)
+        set_records = _fetch_oai_set(set_spec, start_date, end_date)
+        print(f'OAI audit | set={set_spec} | records={len(set_records)}')
+        for record in set_records:
+            records_by_id[record['id']] = record
+
+    rows = []
+    for record in records_by_id.values():
+        matching_queries = [
+            query for query in search_keywords
+            if _oai_record_matches_query(record, query)
+        ]
+        if not matching_queries:
+            continue
+        rows.append({
+            'id': record['id'],
+            'author_list': ', '.join(record['authors']),
+            'title': record['title'],
+            'arxiv_primary_category': record['categories'][0],
+            'published': record['published'],
+            'search_query': str(_legible_query(matching_queries[-1])),
+            'link': record['link'],
+        })
+
+    print(
+        f'OAI audit | unique_records={len(records_by_id)}'
+        f' | matched_records={len(rows)}'
+    )
+    return rows
+
+
+def query_arxiv_org(query_input, since_date=None):
     """Search for query items on arXiv and return the list of results"""
 
     # Construct elements of the query string sent to arxiv.org:
@@ -516,7 +829,7 @@ def query_arxiv_org(query_input):
     # some options
     start = 0
     max_results = 50 # see arXiv API for max result limits
-    sorting_order = '&sortBy=submittedDate&sortOrder=descending'
+    sorting_order = ('submittedDate', 'descending')
 
     result_list = []
     final_failed_queries = []
@@ -538,6 +851,8 @@ def query_arxiv_org(query_input):
         }
 
         if query_result['status'] == 'failed':
+            if _query_api_was_rejected(query_result['error']):
+                return _query_arxiv_oai(search_keywords, since_date=since_date)
             audit_item['error'] = query_result['error']
             second_pass_candidates.append(search_query)
             print(f'Warning: scheduling second-pass retry after failure: {search_query} | {query_result["error"]}')
@@ -572,6 +887,8 @@ def query_arxiv_org(query_input):
         }
 
         if query_result['status'] == 'failed':
+            if _query_api_was_rejected(query_result['error']):
+                return _query_arxiv_oai(search_keywords, since_date=since_date)
             final_failed_queries.append((search_query, query_result['error']))
             audit_item['error'] = query_result['error']
             print(f'Warning: skipping query after second-pass retries: {search_query} | {query_result["error"]}')
@@ -639,18 +956,39 @@ def main():
     with open(config_file) as c_f:
         configs = json.load(c_f)
 
-    if debug_mode:
-        print('Beginning query: ', datetime.now())
-    result_list = query_arxiv_org(configs['query_input'])
-    if debug_mode:
-        print('Query successful: ', datetime.now())
-
-    # create a new empty data frame if failed to read an existing DB with the same name
+    # The pickle is ignored by git, while the generated HTML is committed on
+    # the build branch. Recovering from HTML keeps the crawl incremental on a
+    # fresh GitHub Actions runner.
     try:
         old_db = pd.read_pickle(configs['db_output'])
     except FileNotFoundError:
         old_db = pd.DataFrame()
-    
+        if os.path.exists(configs['html_output']):
+            try:
+                old_db = pd.read_html(
+                    configs['html_output'],
+                    flavor='bs4',
+                    converters={'id': str},
+                )[0]
+                print(
+                    f"Info: recovered {len(old_db)} existing records from "
+                    f"{configs['html_output']}."
+                )
+            except (ImportError, ValueError):
+                old_db = pd.DataFrame()
+
+    since_date = None
+    if not old_db.empty and 'published' in old_db:
+        parsed_dates = pd.to_datetime(old_db['published'], errors='coerce')
+        if parsed_dates.notna().any():
+            since_date = parsed_dates.max().to_pydatetime()
+
+    if debug_mode:
+        print('Beginning query: ', datetime.now())
+    result_list = query_arxiv_org(configs['query_input'], since_date=since_date)
+    if debug_mode:
+        print('Query successful: ', datetime.now())
+
     new_db = pd.DataFrame(result_list)
     updated_db = dbmanip.update_database(old_db, new_db)
     if debug_mode:
